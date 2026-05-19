@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organização - Prisma</title>
+
+    <style>
+        :root {
+            --azul: #0097b2;
+            --azul-escuro: #004651;
+            --amarelo: #ffde59;
+            --texto: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background-image: url("assets/fundo.png");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: var(--texto);
+            min-height: 100vh;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        .topo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .topo h1 {
+            color: var(--azul);
+            font-size: 2.3rem;
+        }
+
+        .btn-voltar {
+            background: white;
+            color: var(--azul);
+            border: none;
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .painel {
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .painel h2 {
+            color: var(--azul);
+            margin-bottom: 15px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 13px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            border: 1px solid #ccc;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        button {
+            transition: 0.2s;
+        }
+
+        .btn-add {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background: var(--azul);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-add:hover {
+            background: #00748a;
+        }
+
+        .item {
+            background: rgba(255,255,255,0.9);
+            border-left: 5px solid var(--amarelo);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+
+        .item strong {
+            color: var(--azul);
+        }
+
+        .btn-remover {
+            margin-top: 10px;
+            background: #ff5c5c;
+            color: white;
+            border: none;
+            padding: 9px 13px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .vazio {
+            background: rgba(255,255,255,0.85);
+            padding: 15px;
+            border-radius: 15px;
+            color: #555;
+        }
+
+        @media(max-width: 700px) {
+            .topo {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="topo">
+            <h1>🗓 Organização Escolar</h1>
+
+            <button class="btn-voltar" onclick="window.location.href='index.html'">
+                Voltar
+            </button>
+        </div>
+
+        <div class="painel">
+            <h2>Adicionar prazo</h2>
+
+            <input type="text" id="titulo" placeholder="Nome da atividade ou prova">
+
+            <select id="tipo">
+                <option value="Atividade">Atividade</option>
+                <option value="Prova">Prova</option>
+                <option value="Trabalho">Trabalho</option>
+            </select>
+
+            <input type="date" id="data">
+
+            <button onclick="adicionarPrazo()" class="btn-add">
+                Adicionar
+            </button>
+        </div>
+
+        <div class="painel">
+            <h2>Meus prazos</h2>
+            <div id="lista"></div>
+        </div>
+
+    </div>
+
+    <script type="module">
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+        import {
+            getAuth,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        import {
+            getFirestore,
+            collection,
+            addDoc,
+            deleteDoc,
+            doc,
+            query,
+            orderBy,
+            onSnapshot
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+
+            apiKey: "AIzaSyAc7jzDVNaMpvvUEcLvWLKn3tlwXbIjPfE",
+
+            authDomain: "prisma-77a34.firebaseapp.com",
+
+            databaseURL: "https://prisma-77a34-default-rtdb.firebaseio.com",
+
+            projectId: "prisma-77a34",
+
+            storageBucket: "prisma-77a34.firebasestorage.app",
+
+            messagingSenderId: "1051365316351",
+
+            appId: "1:1051365316351:web:8ff75e9afefb8c66b29eca",
+
+            measurementId: "G-98JH6J2WHD"
+
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let usuarioAtual = null;
+
+        onAuthStateChanged(auth, (user) => {
+
+            if (!user) {
+
+                alert("Faça login primeiro.");
+                window.location.href = "index.html";
+                return;
+
+            }
+
+            usuarioAtual = user;
+            carregarPrazos();
+
+        });
+
+        function carregarPrazos() {
+
+            const lista = document.getElementById("lista");
+
+            if (!usuarioAtual) return;
+
+            const caminho = collection(
+                db,
+                "usuarios",
+                usuarioAtual.uid,
+                "prazos"
+            );
+
+            const consulta = query(
+                caminho,
+                orderBy("data", "asc")
+            );
+
+            onSnapshot(consulta, (snapshot) => {
+
+                lista.innerHTML = "";
+
+                if (snapshot.empty) {
+
+                    lista.innerHTML = `
+                        <p class="vazio">
+                            Nenhum prazo cadastrado ainda.
+                        </p>
+                    `;
+
+                    return;
+
+                }
+
+                snapshot.forEach((documento) => {
+
+                    const prazo = documento.data();
+
+                    const div = document.createElement("div");
+
+                    div.className = "item";
+
+                    div.innerHTML = `
+                        <p>
+                            <strong>${prazo.tipo}:</strong> ${prazo.titulo}<br>
+                            <strong>Data:</strong> ${prazo.data}
+                        </p>
+
+                        <button
+                            class="btn-remover"
+                            onclick="removerPrazo('${documento.id}')"
+                        >
+                            Remover
+                        </button>
+                    `;
+
+                    lista.appendChild(div);
+
+                });
+
+            });
+
+        }
+
+        window.adicionarPrazo = async () => {
+
+            if (!usuarioAtual) {
+
+                alert("Você precisa estar logado.");
+                return;
+
+            }
+
+            const titulo = document.getElementById("titulo").value.trim();
+            const tipo = document.getElementById("tipo").value;
+            const data = document.getElementById("data").value;
+
+            if (!titulo || !data) {
+
+                alert("Preencha o nome e a data.");
+                return;
+
+            }
+
+            await addDoc(
+                collection(db, "usuarios", usuarioAtual.uid, "prazos"),
+                {
+                    titulo: titulo,
+                    tipo: tipo,
+                    data: data,
+                    criadoEm: new Date().toISOString()
+                }
+            );
+
+            document.getElementById("titulo").value = "";
+            document.getElementById("data").value = "";
+
+        };
+
+        window.removerPrazo = async (id) => {
+
+            if (!usuarioAtual) return;
+
+            await deleteDoc(
+                doc(db, "usuarios", usuarioAtual.uid, "prazos", id)
+            );
+
+        };
+
+    </script>
+
+</body>
+</html>

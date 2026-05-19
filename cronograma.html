@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cronograma - Prisma</title>
+
+<style>
+:root {
+    --azul: #0097b2;
+    --azul-escuro: #004651;
+    --amarelo: #ffde59;
+    --texto: #333;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+body {
+    background-image: url("assets/fundo.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    min-height: 100vh;
+    padding: 30px;
+    color: var(--texto);
+}
+
+.container {
+    max-width: 1000px;
+    margin: auto;
+}
+
+.topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.topo h1 {
+    color: var(--azul);
+    font-size: 2.3rem;
+}
+
+.btn-voltar {
+    background: white;
+    color: var(--azul);
+    border: none;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.painel {
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+.painel h2 {
+    color: var(--azul);
+    margin-bottom: 15px;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 13px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    outline: none;
+    font-size: 1rem;
+}
+
+textarea {
+    resize: none;
+    min-height: 80px;
+}
+
+.btn-add {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: var(--azul);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-add:hover {
+    background: #00748a;
+}
+
+.dia-box {
+    background: rgba(255,255,255,0.9);
+    border-radius: 18px;
+    padding: 18px;
+    margin-bottom: 18px;
+}
+
+.dia-box h3 {
+    color: var(--azul);
+    margin-bottom: 12px;
+}
+
+.item {
+    background: white;
+    border-left: 5px solid var(--amarelo);
+    border-radius: 15px;
+    padding: 15px;
+    margin-bottom: 12px;
+}
+
+.item.concluido {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.item strong {
+    color: var(--azul);
+}
+
+.botoes {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.btn-concluir {
+    background: #0097b2;
+    color: white;
+    border: none;
+    padding: 9px 13px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.btn-remover {
+    background: #ff5c5c;
+    color: white;
+    border: none;
+    padding: 9px 13px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.vazio {
+    color: #555;
+}
+
+@media(max-width:700px) {
+    .topo {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .botoes {
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="topo">
+        <h1>⏰ Cronograma de Estudos</h1>
+
+        <button class="btn-voltar" onclick="window.location.href='index.html'">
+            Voltar
+        </button>
+    </div>
+
+    <div class="painel">
+        <h2>Adicionar estudo</h2>
+
+        <input type="text" id="materia" placeholder="Matéria">
+
+        <select id="dia">
+            <option value="Segunda-feira">Segunda-feira</option>
+            <option value="Terça-feira">Terça-feira</option>
+            <option value="Quarta-feira">Quarta-feira</option>
+            <option value="Quinta-feira">Quinta-feira</option>
+            <option value="Sexta-feira">Sexta-feira</option>
+            <option value="Sábado">Sábado</option>
+            <option value="Domingo">Domingo</option>
+        </select>
+
+        <input type="time" id="horario">
+
+        <input type="text" id="tempo" placeholder="Tempo de estudo. Ex: 1 hora">
+
+        <textarea id="observacao" placeholder="Observação. Ex: revisar capítulo 3"></textarea>
+
+        <button onclick="adicionarEstudo()" class="btn-add">
+            Adicionar ao Cronograma
+        </button>
+    </div>
+
+    <div class="painel">
+        <h2>Meu cronograma semanal</h2>
+        <div id="lista"></div>
+    </div>
+
+</div>
+
+<script>
+const diasSemana = [
+    "Segunda-feira",
+    "Terça-feira",
+    "Quarta-feira",
+    "Quinta-feira",
+    "Sexta-feira",
+    "Sábado",
+    "Domingo"
+];
+
+function carregarCronograma() {
+    const cronograma = JSON.parse(localStorage.getItem("cronogramaPrisma")) || [];
+    const lista = document.getElementById("lista");
+
+    lista.innerHTML = "";
+
+    if (cronograma.length === 0) {
+        lista.innerHTML = `<p class="vazio">Nenhum horário cadastrado ainda.</p>`;
+        return;
+    }
+
+    diasSemana.forEach((dia) => {
+        const estudosDoDia = cronograma
+            .map((item, index) => ({ ...item, index }))
+            .filter((item) => item.dia === dia)
+            .sort((a, b) => a.horario.localeCompare(b.horario));
+
+        if (estudosDoDia.length > 0) {
+            const diaBox = document.createElement("div");
+            diaBox.className = "dia-box";
+
+            diaBox.innerHTML = `<h3>${dia}</h3>`;
+
+            estudosDoDia.forEach((item) => {
+                const div = document.createElement("div");
+                div.className = item.concluido ? "item concluido" : "item";
+
+                div.innerHTML = `
+                    <p>
+                        <strong>Matéria:</strong> ${item.materia}<br>
+                        <strong>Horário:</strong> ${item.horario}<br>
+                        <strong>Tempo:</strong> ${item.tempo}<br>
+                        <strong>Observação:</strong> ${item.observacao || "Sem observação"}
+                    </p>
+
+                    <div class="botoes">
+                        <button class="btn-concluir" onclick="marcarConcluido(${item.index})">
+                            ${item.concluido ? "Desmarcar" : "Concluído"}
+                        </button>
+
+                        <button class="btn-remover" onclick="removerEstudo(${item.index})">
+                            Remover
+                        </button>
+                    </div>
+                `;
+
+                diaBox.appendChild(div);
+            });
+
+            lista.appendChild(diaBox);
+        }
+    });
+}
+
+function adicionarEstudo() {
+    const materia = document.getElementById("materia").value.trim();
+    const dia = document.getElementById("dia").value;
+    const horario = document.getElementById("horario").value;
+    const tempo = document.getElementById("tempo").value.trim();
+    const observacao = document.getElementById("observacao").value.trim();
+
+    if (!materia || !horario || !tempo) {
+        alert("Preencha a matéria, o horário e o tempo de estudo.");
+        return;
+    }
+
+    const cronograma = JSON.parse(localStorage.getItem("cronogramaPrisma")) || [];
+
+    cronograma.push({
+        materia,
+        dia,
+        horario,
+        tempo,
+        observacao,
+        concluido: false
+    });
+
+    localStorage.setItem("cronogramaPrisma", JSON.stringify(cronograma));
+
+    document.getElementById("materia").value = "";
+    document.getElementById("horario").value = "";
+    document.getElementById("tempo").value = "";
+    document.getElementById("observacao").value = "";
+
+    carregarCronograma();
+}
+
+function marcarConcluido(index) {
+    const cronograma = JSON.parse(localStorage.getItem("cronogramaPrisma")) || [];
+
+    cronograma[index].concluido = !cronograma[index].concluido;
+
+    localStorage.setItem("cronogramaPrisma", JSON.stringify(cronograma));
+
+    carregarCronograma();
+}
+
+function removerEstudo(index) {
+    const cronograma = JSON.parse(localStorage.getItem("cronogramaPrisma")) || [];
+
+    cronograma.splice(index, 1);
+
+    localStorage.setItem("cronogramaPrisma", JSON.stringify(cronograma));
+
+    carregarCronograma();
+}
+
+carregarCronograma();
+</script>
+
+</body>
+</html>
